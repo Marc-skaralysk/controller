@@ -27,20 +27,46 @@ class SistemaControle {
         if (usuariosSalvos) {
             this.usuarios = JSON.parse(usuariosSalvos);
         } else if (typeof DEMO_DATA !== 'undefined') {
-            this.usuarios = DEMO_DATA.usuarios.map(nome => ({
-                id: this.gerarId(),
-                nome: nome,
-                dataCriacao: new Date().toISOString()
+            // Carregar usuários demo com estrutura correta
+            this.usuarios = DEMO_DATA.usuarios.map(usuario => ({
+                id: usuario.id,
+                nome: usuario.nome,
+                departamento: usuario.departamento,
+                dataCriacao: usuario.dataCriacao
             }));
             this.salvarUsuarios();
         }
         
         if (mercadoriasSalvas) {
             this.mercadorias = JSON.parse(mercadoriasSalvas);
+        } else if (typeof DEMO_DATA !== 'undefined') {
+            // Carregar mercadorias demo
+            this.mercadorias = DEMO_DATA.mercadorias.map(mercadoria => ({
+                id: mercadoria.id,
+                usuarioId: mercadoria.usuarioId,
+                nome: mercadoria.nome,
+                status: mercadoria.status,
+                valor: mercadoria.valor,
+                observacoes: mercadoria.observacoes,
+                dataCriacao: mercadoria.dataCriacao,
+                ultimaMovimentacao: mercadoria.ultimaMovimentacao
+            }));
+            this.salvarMercadorias();
         }
         
         if (historicoSalvo) {
             this.historico = JSON.parse(historicoSalvo);
+        } else if (typeof DEMO_DATA !== 'undefined') {
+            // Carregar histórico demo
+            this.historico = DEMO_DATA.historico.map(item => ({
+                id: item.id,
+                usuarioId: item.usuarioId,
+                mercadoria: item.mercadoria,
+                acao: item.acao,
+                observacoes: item.observacoes,
+                dataHora: item.dataHora
+            }));
+            this.salvarHistorico();
         }
         
         this.atualizarValorTotal();
