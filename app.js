@@ -177,7 +177,7 @@ class SistemaControle {
         let usuariosFiltrados = this.usuarios;
         if (filtro) {
             usuariosFiltrados = this.usuarios.filter(usuario => 
-                usuario.nome.toLowerCase().includes(filtro.toLowerCase())
+                usuario.nome && typeof usuario.nome === 'string' && usuario.nome.toLowerCase().includes(filtro.toLowerCase())
             );
         }
         
@@ -274,7 +274,7 @@ class SistemaControle {
         }
         
         // Verificar se já existe
-        if (this.usuarios.some(u => u.nome.toLowerCase() === nome.toLowerCase())) {
+        if (this.usuarios.some(u => u.nome && typeof u.nome === 'string' && u.nome.toLowerCase() === nome.toLowerCase())) {
             this.mostrarToast('Já existe um usuário com este nome', 'error');
             return;
         }
