@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Entrada e Saída de Materiais</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .material-icons {
+            font-size: 18px;
+        }
+        .hover-shadow {
+            transition: all 0.2s ease;
+        }
+        .hover-shadow:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-1px);
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .scroll-smooth {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center">
+                        <img src="https://i.imgur.com/F64dau3.png" alt="Logo" class="h-12 w-auto mr-3">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-800">Controle de Materiais</h1>
+                            <p class="text-sm text-gray-600">Sistema de entrada e saída</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="novoUsuarioBtn" 
+                            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors hover-shadow flex items-center">
+                        <span class="material-icons mr-2">add</span>
+                        Novo Usuário
+                    </button>
+                    <div class="relative">
+                        <input type="text" id="campoBusca" placeholder="Buscar registros..."
+                               class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all w-80">
+                        <span class="material-icons absolute left-3 top-2.5 text-gray-400">search</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6">
+        <!-- Cabeçalho dos Usuários -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-800 flex items-center">
+                        <span class="material-icons text-blue-600 mr-2">people</span>
+                        Controle de Usuários e Mercadorias
+                    </h2>
+                    <div class="flex items-center space-x-6 text-sm text-gray-500">
+                        <div class="flex items-center">
+                            <span class="material-icons text-blue-600 mr-1 text-sm">people</span>
+                            <span><span id="contadorUsuarios">0</span> usuários cadastrados</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="material-icons text-purple-600 mr-1 text-sm">inventory</span>
+                            <span><span id="contadorMercadorias">0</span> mercadorias cadastradas</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="material-icons text-green-600 mr-1 text-sm">attach_money</span>
+                            <span>Valor Total: <span id="valorTotalMercadorias">R$ 0,00</span></span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="material-icons text-red-600 mr-1 text-sm">warning</span>
+                            <span>Danificados: <span id="valorDanificados">R$ 0,00</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lista de Usuários -->
+            <div class="table-container">
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Usuário</th>
+                                <th>Departamento</th>
+                                <th>Mercadorias Ativas</th>
+                                <th>Total Movimentações</th>
+                                <th>Última Atividade</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaUsuarios">
+                            <!-- Usuários serão inseridos aqui dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Gráficos -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Gráfico de Movimentações -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <span class="material-icons text-green-600 mr-2">bar_chart</span>
+                        Movimentações por Período
+                    </h3>
+                    <p class="text-sm text-gray-600 mt-1">Últimos 30 dias</p>
+                </div>
+                <div class="p-6">
+                    <canvas id="graficoMovimentacoes" width="400" height="200"></canvas>
+                </div>
+            </div>
+            
+            <!-- Gráfico de Produtos Danificados -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <span class="material-icons text-red-600 mr-2">warning</span>
+                        Valor Total vs Danificados
+                    </h3>
+                    <p class="text-sm text-gray-600 mt-1">Comparação entre valor total e produtos danificados</p>
+                </div>
+                <div class="p-6">
+                    <canvas id="graficoDanificados" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Novo Usuário -->
+    <div id="modalNovoUsuario" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="modal-header">
+                <h3 class="modal-title">Novo Usuário</h3>
+                <button type="button" id="fecharModalUsuarioBtn" class="modal-close">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <form id="usuarioForm" class="space-y-4">
+                    <div>
+                        <label for="nomeUsuario" class="block text-sm font-medium text-gray-700 mb-1">Nome do Usuário</label>
+                        <input type="text" id="nomeUsuario" name="nomeUsuario" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors">
+                    </div>
+                    
+                    <div>
+                        <label for="departamentoUsuario" class="block text-sm font-medium text-gray-700 mb-1">Departamento</label>
+                        <select id="departamentoUsuario" name="departamentoUsuario" required 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors">
+                            <option value="">Selecione o departamento</option>
+                            <option value="Societário">Societário</option>
+                            <option value="Contábil">Contábil</option>
+                            <option value="NIT">NIT</option>
+                            <option value="Comercial">Comercial</option>
+                            <option value="Fiscal">Fiscal</option>
+                            <option value="Administrativo">Administrativo</option>
+                            <option value="Limpeza">Limpeza</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" id="cancelarUsuarioBtn" class="btn-secondary">Cancelar</button>
+                <button type="submit" id="salvarUsuarioBtn" form="usuarioForm" class="btn-primary">Salvar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Mercadorias do Usuário -->
+    <div id="modalMercadorias" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[90vh] overflow-hidden">
+            <div class="modal-header">
+                <h3 class="modal-title" id="tituloModalMercadorias">Mercadorias - Usuário</h3>
+                <button type="button" id="fecharModalMercadoriasBtn" class="modal-close">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            
+            <div class="modal-body overflow-y-auto" style="max-height: calc(90vh - 140px);">
+                <!-- Botões de Ação -->
+                <div class="flex gap-3 mb-4">
+                    <button id="novaMercadoriaBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center">
+                        <span class="material-icons text-sm mr-2">add</span>
+                        Nova Mercadoria
+                    </button>
+                    <button id="exportarMercadoriasBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                        <span class="material-icons text-sm mr-2">download</span>
+                        Exportar
+                    </button>
+                </div>
+                
+                <!-- Tabela de Mercadorias -->
+                <div class="table-wrapper">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mercadoria</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Etiqueta</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Movimentação</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaMercadorias" class="bg-white divide-y divide-gray-200">
+                            <!-- Mercadorias serão inseridas aqui -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Histórico de Movimentações -->
+                <div class="mt-6">
+                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Histórico de Movimentações</h4>
+                    <div class="table-wrapper">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data/Hora</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mercadoria</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status - Etiqueta</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ação</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaHistorico" class="bg-white divide-y divide-gray-200">
+                                <!-- Histórico será inserido aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Nova/Editar Mercadoria -->
+    <div id="modalEditarMercadoria" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="modal-header">
+                <h3 class="modal-title" id="tituloModalEditar">Nova Mercadoria</h3>
+                <button type="button" id="fecharModalEditarBtn" class="modal-close">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <form id="mercadoriaForm" class="space-y-4">
+                    <div>
+                        <label for="nomeMercadoria" class="block text-sm font-medium text-gray-700 mb-1">Nome da Mercadoria</label>
+                        <input type="text" id="nomeMercadoria" name="nomeMercadoria" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors">
+                    </div>
+                    
+                    <div>
+                        <label for="statusMercadoria" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="statusMercadoria" name="statusMercadoria" required 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors">
+                            <option value="">Selecione o status</option>
+                            <option value="Disponível">Disponível</option>
+                            <option value="Em Uso">Em Uso</option>
+                            <option value="Manutenção">Manutenção</option>
+                            <option value="Danificado">Danificado</option>
+                            <option value="Saída">Saída</option>
+                            <option value="Entrada">Entrada</option>
+                            <option value="Volta Manutenção">Volta Manutenção</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="valorMercadoria" class="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+                        <input type="number" id="valorMercadoria" name="valorMercadoria" step="0.01" min="0" 
+                               placeholder="0,00"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors">
+                    </div>
+                    
+                    <div>
+                        <label for="observacoesMercadoria" class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                        <textarea id="observacoesMercadoria" name="observacoesMercadoria" rows="3" 
+                                  placeholder="Informações adicionais sobre a mercadoria..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors resize-none"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label for="etiquetaMercadoria" class="block text-sm font-medium text-gray-700 mb-1">Etiqueta de Controle</label>
+                        <select id="etiquetaMercadoria" name="etiquetaMercadoria" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors">
+                            <option value="">Selecione uma etiqueta</option>
+                            <option value="Saiu-OK">Saiu-OK</option>
+                            <option value="Retornou-OK">Retornou-OK</option>
+                            <option value="Retornou-Danificado">Retornou-Danificado</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="codigoEtiqueta" class="block text-sm font-medium text-gray-700 mb-1">Cod. do produto</label>
+                        <input type="text" id="codigoEtiqueta" name="codigoEtiqueta" 
+                               placeholder="Digite o código da etiqueta..."
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors">
+                    </div>
+                </form>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" id="cancelarMercadoriaBtn" class="btn-secondary">Cancelar</button>
+                <button type="submit" id="salvarMercadoriaBtn" form="mercadoriaForm" class="btn-primary">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalhes do Usuário -->
+    <div id="modalDetalhesUsuario" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-semibold text-gray-800 flex items-center" id="tituloModalUsuario">
+                        <span class="material-icons text-blue-600 mr-2">person</span>
+                        Movimentações do Usuário
+                    </h3>
+                    <button id="fecharModalUsuario" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <div class="mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-blue-50 p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-blue-600" id="totalMovimentacoes">0</div>
+                            <div class="text-sm text-gray-600">Total de Movimentações</div>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-green-600" id="totalEntradas">0</div>
+                            <div class="text-sm text-gray-600">Entradas</div>
+                        </div>
+                        <div class="bg-red-50 p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-red-600" id="totalSaidas">0</div>
+                            <div class="text-sm text-gray-600">Saídas</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg border border-gray-200">
+                    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data/Hora</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observações</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                            </tr>
+                        </thead>
+                            <tbody id="tabelaDetalhesUsuario" class="bg-white divide-y divide-gray-200">
+                                <!-- Movimentações do usuário serão inseridas aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-6 border-t border-gray-200">
+                 <div class="flex justify-between items-center">
+                     <button type="button" id="novaMovimentacaoUsuarioBtn" class="bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                         <span class="material-icons text-sm mr-2">add</span>
+                         Nova Movimentação
+                     </button>
+                     <button type="button" id="fecharModalUsuarioBtn" class="bg-gray-600 text-white py-2 px-6 rounded-lg hover:bg-gray-700 transition-colors">
+                         Fechar
+                     </button>
+                 </div>
+             </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications são criadas dinamicamente pelo JavaScript -->
+
+    <script src="config.js"></script>
+    <script src="demo-data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
